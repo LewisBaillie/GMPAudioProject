@@ -36,6 +36,14 @@ void UPlotSpherePoints::addPoint(float x, float y, int i)
 }
 
 
+void UPlotSpherePoints::RunWave()
+{
+	for (int i = 0; i < sizeof(points); i++)
+	{
+		//startPos = new FVector(points[i],0);
+	}
+}
+
 // Called when the game starts
 void UPlotSpherePoints::BeginPlay()
 {

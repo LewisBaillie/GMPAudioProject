@@ -24,6 +24,7 @@ public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+	//Point Placement Variables
 	void PointProductionMaths(int numOfPoints, float GoldenRatio);
 	void addPoint(float x, float y, int i);
 
@@ -31,4 +32,17 @@ public:
 	FVector2D pointToAdd;
 
 	float goldenRatio;
+	//End of Placement Variables
+
+
+	//Ray Cast Variables
+	float attenuationDistance;
+	FVector startPos;
+	FVector endPos;
+	FHitResult hit;
+
+	FCollisionQueryParams collisionParameters;
+
+	void RunWave();
+
 };
