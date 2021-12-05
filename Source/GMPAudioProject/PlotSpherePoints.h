@@ -24,22 +24,43 @@ public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+	//Input Method
+	/*virtual void SetupInputComponent(UInputComponent* PlayerInputComponent);*/
+
+	//Input Variable
+	/*UInputComponent* inputComponent;*/
+
+
 	//Point Placement Variables
-	void PointProductionMaths(int numOfPoints, float GoldenRatio);
-	void addPoint(float x, float y, int i);
+	UFUNCTION(BlueprintCallable)
+	void PointProductionMaths(int NumOfPoints, float GoldenRatio);
+	void addPoint(float x, float y, float z, int i);
 
-	FVector2D points[720];
-	FVector2D pointToAdd;
+	FVector points[720];
+	FVector pointToAdd;
 
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly)
+	int numOfPoints;
+
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly)
 	float goldenRatio;
 	//End of Placement Variables
 
 
 	//Ray Cast Variables
-	float attenuationDistance;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Information)
+	float attenuationDistance = 100;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Information)
+	FVector soundLocation;
+
 	FVector startPos;
 	FVector endPos;
-	FHitResult hit;
+	FVector directionalToPoint;
+	int vectorLength;
+	FVector normalizedVector;
+
+	bool rayHit;
 
 	FCollisionQueryParams collisionParameters;
 
