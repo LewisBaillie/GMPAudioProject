@@ -34,10 +34,23 @@ public:
 	//Point Placement Variables
 	UFUNCTION(BlueprintCallable)
 	void PointProductionMaths(int NumOfPoints, float GoldenRatio);
-	void addPoint(float x, float y, float z, int i);
 
-	FVector points[720];
-	FVector pointToAdd;
+	UPROPERTY()
+	TArray<FVector> points;
+	UPROPERTY()
+	TArray<FVector> pointsSecondary;
+	UPROPERTY()
+	TArray<float> distances;
+	UPROPERTY()
+	TArray<float> distancesSecondary;
+
+	int hitsFound;
+
+	FVector reflectionAngle;
+	UPROPERTY()
+	TArray<FVector> reflectionAngles;
+	UPROPERTY()
+	TArray<FVector> reflectionAnglesSecondary;
 
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly)
 	int numOfPoints;
@@ -49,7 +62,7 @@ public:
 
 	//Ray Cast Variables
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Information)
-	float attenuationDistance = 100;
+	float attenuationDistance = 1000;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Information)
 	FVector soundLocation;
@@ -60,10 +73,17 @@ public:
 	int vectorLength;
 	FVector normalizedVector;
 
+	FHitResult hit;
+
 	bool rayHit;
+
+	int active;
 
 	FCollisionQueryParams collisionParameters;
 
-	void RunWave();
+	void RunFirstWave();
+	void RunWave(TArray<FVector> startPositions, TArray<float> attenDistance, TArray<FVector> reflectionAngleArray);
+
 
 };
+ 
