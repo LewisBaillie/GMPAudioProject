@@ -73,7 +73,7 @@ public:
 	int vectorLength;
 	FVector normalizedVector;
 
-	FHitResult hit;
+	
 
 	bool rayHit;
 
@@ -82,7 +82,8 @@ public:
 	FCollisionQueryParams collisionParameters;
 
 	void RunFirstWave();
-	void RunWave(TArray<FVector> startPositions, TArray<float> attenDistance, TArray<FVector> reflectionAngleArray);
+	void RunWave(TArray<FVector> startPositions, TArray<float> distance, TArray<FVector> reflectionAngleArray);
+	void RunNextWave(TArray<FVector> positions, TArray<float> distancesList, TArray<FVector> reflectionAngleList);
 
 
 };

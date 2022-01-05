@@ -3,6 +3,7 @@
 
 #include "PlotSpherePoints.h"
 #include "DrawDebugHelpers.h"
+#include "CollisionQueryParams.h"
 
 // Sets default values for this component's properties
 UPlotSpherePoints::UPlotSpherePoints()
@@ -83,8 +84,10 @@ void UPlotSpherePoints::RunFirstWave()
 	{
 		
 	}*/
+	active = 1;
 	for (FVector point : points)
 	{
+		FHitResult hit;
 		//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("%f, %f, %f"), point.X, point.Y, point.Z));
 		startPos = point;
 		directionalToPoint = point - GetOwner()->GetActorLocation();
@@ -93,29 +96,28 @@ void UPlotSpherePoints::RunFirstWave()
 
 		endPos = startPos + (normalizedVector * attenuationDistance);
 		
-		rayHit = GetWorld()->LineTraceSingleByChannel(hit, startPos, endPos, ECollisionChannel::ECC_WorldStatic, collisionParameters);
+		rayHit = GetWorld()->LineTraceSingleByChannel(hit, startPos, endPos, ECollisionChannel::ECC_MAX);
 
 		if (rayHit)
 		{
-			
-			pointsSecondary.Emplace(hit.ImpactPoint);
+			/*The hit is repeatig due to the pixel perfect collisio with the sae aterial*/
+			pointsSecondary.Emplace(hit.ImpactPoint + (normalizedVector * -0.1f));
 			distancesSecondary.Emplace(attenuationDistance - hit.Distance);
 			
-			reflectionAngle = normalizedVector - (2 * (FVector::DotProduct(normalizedVector, hit.ImpactNormal))/ sqrt(hit.ImpactNormal.X * hit.ImpactNormal.X + hit.ImpactNormal.Y * hit.ImpactNormal.Y + hit.ImpactNormal.Z * hit.ImpactNormal.Z)) * hit.ImpactNormal;
+			reflectionAngle = normalizedVector - (2 * (FVector::DotProduct(normalizedVector, hit.ImpactNormal)) / (hit.ImpactNormal.X * hit.ImpactNormal.X) + (hit.ImpactNormal.Y * hit.ImpactNormal.Y) + (hit.ImpactNormal.Z * hit.ImpactNormal.Z)) * hit.ImpactNormal;
 			reflectionAnglesSecondary.Emplace(reflectionAngle);
-		}
 
+			
+			hit.Reset(0, false);
+		}
 		DrawDebugLine(GetWorld(), startPos, endPos, FColor::Green, true, 5, 0, 2.f);
-		hit.Reset();
+		rayHit = false;
 	}
 	if (pointsSecondary.Num() > 0)
 	{
-		if (points.IsValidIndex(0))
-		{
-			points.Empty();
-		}
-		active = 2;
-		RunWave(pointsSecondary, distancesSecondary, reflectionAnglesSecondary);
+		
+		points.Empty();
+		RunNextWave(pointsSecondary, distancesSecondary, reflectionAnglesSecondary);
 	}
 }
 
@@ -123,13 +125,32 @@ void UPlotSpherePoints::RunWave(TArray<FVector> startPositions, TArray<float> di
 {
 	//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("STARTING WAVE")));
 
-	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("%d"),startPositions.Num()));
+	if (active == 2)
+	{
+		active = 1;
+	}
+	else if (active == 1)
+	{
+		active = 2;
+	}
+
+
+	//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("%d"),startPositions.Num()));
 	for (int i = 0; i < startPositions.Num(); i++)
 	{
-		startPos = startPositions[i];
-		endPos = startPos + (reflectionAngleArray[i] * distance[i]);
+		FHitResult hitOut;
 
-		rayHit = GetWorld()->LineTraceSingleByChannel(hit, startPos, endPos, ECollisionChannel::ECC_WorldStatic, collisionParameters);
+		//startPos = point;
+		/*directionalToPoint = point - GetOwner()->GetActorLocation();
+		vectorLength = sqrt((directionalToPoint.X * directionalToPoint.X) + (directionalToPoint.Y * directionalToPoint.Y) + (directionalToPoint.Z * directionalToPoint.Z));
+		normalizedVector = (point - GetOwner()->GetActorLocation()) / vectorLength;
+
+		endPos = startPos + (normalizedVector * attenuationDistance);
+
+		rayHit = GetWorld()->LineTraceSingleByChannel(hit, startPos, endPos, ECollisionChannel::ECC_WorldStatic, collisionParameters);*/
+
+
+		rayHit = GetWorld()->LineTraceSingleByChannel(hitOut, startPositions[i], startPositions[i] + (reflectionAngleArray[i] * distance[i]), ECollisionChannel::ECC_WorldStatic, collisionParameters);
 
 		if (rayHit)
 		{
@@ -137,30 +158,34 @@ void UPlotSpherePoints::RunWave(TArray<FVector> startPositions, TArray<float> di
 			//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("HIT")));
 			if (active == 2)
 			{
-				
-				points.Emplace(hit.ImpactPoint);
-				distances.Emplace(distance[i] - hit.Distance);
+				points.Emplace(hitOut.ImpactPoint + (reflectionAngleArray[i] * -0.1f));
+				distances.Emplace(distance[i] - hitOut.Distance);
 
-				reflectionAngle = reflectionAngleArray[i] - (2 * (FVector::DotProduct(reflectionAngleArray[i] , hit.ImpactNormal)) / sqrt(hit.ImpactNormal.X * hit.ImpactNormal.X + hit.ImpactNormal.Y * hit.ImpactNormal.Y + hit.ImpactNormal.Z * hit.ImpactNormal.Z)) * hit.ImpactNormal;
+				reflectionAngle = reflectionAngleArray[i] - (2 * (FVector::DotProduct(reflectionAngleArray[i], hitOut.ImpactNormal)) / (hitOut.ImpactNormal.X * hitOut.ImpactNormal.X) + (hitOut.ImpactNormal.Y * hitOut.ImpactNormal.Y) + (hitOut.ImpactNormal.Z * hitOut.ImpactNormal.Z)) * hitOut.ImpactNormal;
+				/*vectorLength = sqrt((reflectionAngle.X * reflectionAngle.X) + (reflectionAngle.Y * reflectionAngle.Y) + (reflectionAngle.Z * reflectionAngle.Z));
+				reflectionAngle = (reflectionAngle / vectorLength);*/
 				reflectionAngles.Emplace(reflectionAngle);
 			}
 			else if (active == 1)
 			{
-				pointsSecondary.Emplace(hit.ImpactPoint);
-				distancesSecondary.Emplace(distance[i] - hit.Distance);
+				pointsSecondary.Emplace(hitOut.ImpactPoint + (reflectionAngleArray[i] * -0.1f));
+				distancesSecondary.Emplace(distance[i] - hitOut.Distance);
 
-				reflectionAngle = reflectionAngleArray[i] - (2 * (FVector::DotProduct(reflectionAngleArray[i], hit.ImpactNormal)) / sqrt(hit.ImpactNormal.X * hit.ImpactNormal.X + hit.ImpactNormal.Y * hit.ImpactNormal.Y + hit.ImpactNormal.Z * hit.ImpactNormal.Z)) * hit.ImpactNormal;
+				reflectionAngle = reflectionAngleArray[i] - (2 * (FVector::DotProduct(reflectionAngleArray[i], hitOut.ImpactNormal)) / (hitOut.ImpactNormal.X * hitOut.ImpactNormal.X) + (hitOut.ImpactNormal.Y * hitOut.ImpactNormal.Y) + (hitOut.ImpactNormal.Z * hitOut.ImpactNormal.Z)) * hitOut.ImpactNormal;
+				/*vectorLength = sqrt((reflectionAngle.X * reflectionAngle.X) + (reflectionAngle.Y * reflectionAngle.Y) + (reflectionAngle.Z * reflectionAngle.Z));
+				reflectionAngle = (reflectionAngle / vectorLength);*/
 				reflectionAnglesSecondary.Emplace(reflectionAngle);
 			}
+			
 		}
 
-		DrawDebugLine(GetWorld(), startPos, endPos, FColor::Green, true, 5, 0, 2.f);
+		DrawDebugLine(GetWorld(), startPositions[i], startPositions[i] + (reflectionAngleArray[i] * distance[i]), FColor::Green, true, 5, 0, 2.f);
 
-		hit.Reset();
+		hitOut.Reset(0, false);
 		rayHit = false;
 	}
 
-	if (hitsFound > 0 && active == 1)
+	if (pointsSecondary.Num() > 0 && active == 1)
 	{	
 		hitsFound = 0;
 		if (points.IsValidIndex(0))
@@ -176,11 +201,10 @@ void UPlotSpherePoints::RunWave(TArray<FVector> startPositions, TArray<float> di
 			reflectionAngles.Empty();
 		}
 		//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("%f, %f, %f"), points[0].X, points[0].Y, points[0].Z));
-		active = 2;
 		//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("%f, %f, %f"), reflectionAnglesSecondary[0].X, reflectionAnglesSecondary[0].Y, reflectionAnglesSecondary[0].Z));
-		RunWave(pointsSecondary, distancesSecondary, reflectionAnglesSecondary);
+		RunNextWave(pointsSecondary, distancesSecondary, reflectionAnglesSecondary);
 	}
-	if (hitsFound > 0 && active == 2)
+	if (points.Num() > 0 && active == 2)
 	{
 		hitsFound = 0;
 		if (pointsSecondary.IsValidIndex(0))
@@ -195,12 +219,16 @@ void UPlotSpherePoints::RunWave(TArray<FVector> startPositions, TArray<float> di
 		{
 			reflectionAnglesSecondary.Empty();
 		}
-		active = 1;
-		RunWave(points, distances, reflectionAngles);
+		RunNextWave(points, distances, reflectionAngles);
 	}
 
 }
 
+
+void UPlotSpherePoints::RunNextWave(TArray<FVector> positions, TArray<float> distancesList, TArray<FVector> reflectionAngleList)
+{
+	RunWave(positions, distancesList, reflectionAngleList);
+}
 
 // Called when the game starts
 void UPlotSpherePoints::BeginPlay()
