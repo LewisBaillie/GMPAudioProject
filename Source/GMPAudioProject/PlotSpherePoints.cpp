@@ -62,12 +62,6 @@ void UPlotSpherePoints::PointProductionMaths(int NumOfPoints, float GoldenRatio)
 		float y = sin(angle) * sin(phi);
 		float z = cos(phi);
 
-		
-		
-
-		
-		
-
 
 		*/
 
