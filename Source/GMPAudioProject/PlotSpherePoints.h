@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "ListenerActor.h"
 #include "CoreMinimal.h"
 #include "Components/SceneComponent.h"
 #include "PlotSpherePoints.generated.h"
@@ -52,6 +53,16 @@ public:
 	UPROPERTY()
 	TArray<FVector> reflectionAnglesSecondary;
 
+	UPROPERTY()
+	TArray<FVector> endPoints;
+	UPROPERTY()
+	TArray<FVector> hitPoints;
+	UPROPERTY()
+	TArray<float> hitDistances;
+	UPROPERTY()
+	TArray<FVector> hitAngles;
+
+
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly)
 	int numOfPoints;
 
@@ -73,17 +84,20 @@ public:
 	int vectorLength;
 	FVector normalizedVector;
 
+	AListenerActor* listener;
 	
-
 	bool rayHit;
 
 	int active;
+	int waveCount;
 
 	FCollisionQueryParams collisionParameters;
 
 	void RunFirstWave();
 	void RunWave(TArray<FVector> startPositions, TArray<float> distance, TArray<FVector> reflectionAngleArray);
 	void RunNextWave(TArray<FVector> positions, TArray<float> distancesList, TArray<FVector> reflectionAngleList);
+
+	void EndOfWaves();
 
 
 };

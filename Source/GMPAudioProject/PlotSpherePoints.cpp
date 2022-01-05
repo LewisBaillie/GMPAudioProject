@@ -3,6 +3,8 @@
 
 #include "PlotSpherePoints.h"
 #include "DrawDebugHelpers.h"
+#include "Kismet/GameplayStatics.h"
+#include "Camera/PlayerCameraManager.h"
 #include "CollisionQueryParams.h"
 
 // Sets default values for this component's properties
@@ -29,6 +31,11 @@ void UPlotSpherePoints::PointProductionMaths(int NumOfPoints, float GoldenRatio)
 {
 
 	points.Empty();
+
+	APlayerCameraManager* playerCamera = GetWorld()->GetFirstPlayerController()->PlayerCameraManager;
+	FActorSpawnParameters spawnInfo;
+	listener = GetWorld()->SpawnActor<AListenerActor>(AListenerActor::StaticClass(), playerCamera->GetCameraLocation(), playerCamera->GetCameraRotation(), spawnInfo);
+	listener->AttachToActor(playerCamera, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
 	
 	float phi = PI * (3.f - sqrt(5.f));
 	//static_cast<float>
@@ -78,6 +85,7 @@ void UPlotSpherePoints::RunFirstWave()
 	{
 		
 	}*/
+	waveCount = 1.0f;
 	active = 1;
 	for (FVector point : points)
 	{
@@ -92,20 +100,36 @@ void UPlotSpherePoints::RunFirstWave()
 		
 		rayHit = GetWorld()->LineTraceSingleByChannel(hit, startPos, endPos, ECollisionChannel::ECC_MAX);
 
+		
+
 		if (rayHit)
 		{
+			if (hit.GetActor()->GetClass() == AListenerActor::StaticClass())
+			{
+				hitPoints.Emplace(hit.ImpactPoint);
+				hitDistances.Emplace(attenuationDistance);
+				hitAngles.Emplace(normalizedVector);
+			}
 			/*The hit is repeatig due to the pixel perfect collisio with the sae aterial*/
 			pointsSecondary.Emplace(hit.ImpactPoint + (normalizedVector * -0.1f));
 			distancesSecondary.Emplace(attenuationDistance - hit.Distance);
 			
-			reflectionAngle = normalizedVector - (2 * (FVector::DotProduct(normalizedVector, hit.ImpactNormal)) / (hit.ImpactNormal.X * hit.ImpactNormal.X) + (hit.ImpactNormal.Y * hit.ImpactNormal.Y) + (hit.ImpactNormal.Z * hit.ImpactNormal.Z)) * hit.ImpactNormal;
+			reflectionAngle = -2 * FVector::DotProduct(normalizedVector, hit.ImpactNormal) * hit.ImpactNormal + normalizedVector;
 			reflectionAnglesSecondary.Emplace(reflectionAngle);
 
 			
 			hit.Reset(0, false);
 		}
-		DrawDebugLine(GetWorld(), startPos, endPos, FColor::Green, true, 5, 0, 2.f);
+		else
+		{
+			endPoints.Emplace(endPos);
+		}
+		DrawDebugLine(GetWorld(), startPos, endPos, FColor::Blue, false, waveCount , 0, 2.f);
 		rayHit = false;
+	}
+	if (pointsSecondary.Num() == 0)
+	{
+		EndOfWaves();
 	}
 	if (pointsSecondary.Num() > 0)
 	{
@@ -113,10 +137,13 @@ void UPlotSpherePoints::RunFirstWave()
 		points.Empty();
 		RunNextWave(pointsSecondary, distancesSecondary, reflectionAnglesSecondary);
 	}
+
+	
 }
 
 void UPlotSpherePoints::RunWave(TArray<FVector> startPositions, TArray<float> distance, TArray<FVector> reflectionAngleArray)
 {
+	waveCount += 1;
 	//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("STARTING WAVE")));
 
 	if (active == 2)
@@ -148,74 +175,120 @@ void UPlotSpherePoints::RunWave(TArray<FVector> startPositions, TArray<float> di
 
 		if (rayHit)
 		{
+
 			hitsFound += 1;
 			//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("HIT")));
 			if (active == 2)
 			{
-				points.Emplace(hitOut.ImpactPoint + (reflectionAngleArray[i] * -0.1f));
-				distances.Emplace(distance[i] - hitOut.Distance);
+				if (hitOut.GetActor()->GetClass() == AListenerActor::StaticClass())
+				{
+					hitPoints.Emplace(hitOut.ImpactPoint);
+					hitDistances.Emplace(distance[i] - hitOut.Distance);
+					hitAngles.Emplace(reflectionAngleArray[i]);
+				}
+				else
+				{
+					points.Emplace(hitOut.ImpactPoint + (reflectionAngleArray[i] * -0.1f));
+					distances.Emplace(distance[i] - hitOut.Distance);
 
-				reflectionAngle = reflectionAngleArray[i] - (2 * (FVector::DotProduct(reflectionAngleArray[i], hitOut.ImpactNormal)) / (hitOut.ImpactNormal.X * hitOut.ImpactNormal.X) + (hitOut.ImpactNormal.Y * hitOut.ImpactNormal.Y) + (hitOut.ImpactNormal.Z * hitOut.ImpactNormal.Z)) * hitOut.ImpactNormal;
-				/*vectorLength = sqrt((reflectionAngle.X * reflectionAngle.X) + (reflectionAngle.Y * reflectionAngle.Y) + (reflectionAngle.Z * reflectionAngle.Z));
-				reflectionAngle = (reflectionAngle / vectorLength);*/
-				reflectionAngles.Emplace(reflectionAngle);
+					reflectionAngle = -2 * FVector::DotProduct(reflectionAngleArray[i], hitOut.ImpactNormal) * hitOut.ImpactNormal + reflectionAngleArray[i];
+					/*vectorLength = sqrt((reflectionAngle.X * reflectionAngle.X) + (reflectionAngle.Y * reflectionAngle.Y) + (reflectionAngle.Z * reflectionAngle.Z));
+					reflectionAngle = (reflectionAngle / vectorLength);*/
+					reflectionAngles.Emplace(reflectionAngle);
+				}
+
+				
 			}
 			else if (active == 1)
 			{
-				pointsSecondary.Emplace(hitOut.ImpactPoint + (reflectionAngleArray[i] * -0.1f));
-				distancesSecondary.Emplace(distance[i] - hitOut.Distance);
+				if (hitOut.GetActor()->GetClass() == AListenerActor::StaticClass())
+				{
+					hitPoints.Emplace(hitOut.ImpactPoint);
+					hitDistances.Emplace(distance[i] - hitOut.Distance);
+					hitAngles.Emplace(reflectionAngleArray[i]);
+				}
+				else
+				{
+					pointsSecondary.Emplace(hitOut.ImpactPoint + (reflectionAngleArray[i] * -0.1f));
+					distancesSecondary.Emplace(distance[i] - hitOut.Distance);
 
-				reflectionAngle = reflectionAngleArray[i] - (2 * (FVector::DotProduct(reflectionAngleArray[i], hitOut.ImpactNormal)) / (hitOut.ImpactNormal.X * hitOut.ImpactNormal.X) + (hitOut.ImpactNormal.Y * hitOut.ImpactNormal.Y) + (hitOut.ImpactNormal.Z * hitOut.ImpactNormal.Z)) * hitOut.ImpactNormal;
-				/*vectorLength = sqrt((reflectionAngle.X * reflectionAngle.X) + (reflectionAngle.Y * reflectionAngle.Y) + (reflectionAngle.Z * reflectionAngle.Z));
-				reflectionAngle = (reflectionAngle / vectorLength);*/
-				reflectionAnglesSecondary.Emplace(reflectionAngle);
+					reflectionAngle = -2 * FVector::DotProduct(reflectionAngleArray[i], hitOut.ImpactNormal) * hitOut.ImpactNormal + reflectionAngleArray[i];
+					/*vectorLength = sqrt((reflectionAngle.X * reflectionAngle.X) + (reflectionAngle.Y * reflectionAngle.Y) + (reflectionAngle.Z * reflectionAngle.Z));
+					reflectionAngle = (reflectionAngle / vectorLength);*/
+					reflectionAnglesSecondary.Emplace(reflectionAngle);
+				}
+
+				
 			}
 			
 		}
+		else
+		{
+			endPoints.Emplace(startPositions[i] + (reflectionAngleArray[i] * distance[i]));
+		}
 
-		DrawDebugLine(GetWorld(), startPositions[i], startPositions[i] + (reflectionAngleArray[i] * distance[i]), FColor::Green, true, 5, 0, 2.f);
+		DrawDebugLine(GetWorld(), startPositions[i], startPositions[i] + (reflectionAngleArray[i] * distance[i]), FColor::Green, false, waveCount, 0, 2.0f);
 
 		hitOut.Reset(0, false);
 		rayHit = false;
 	}
 
-	if (pointsSecondary.Num() > 0 && active == 1)
-	{	
-		hitsFound = 0;
-		if (points.IsValidIndex(0))
-		{
-			points.Empty();
-		}
-		if (distances.IsValidIndex(0))
-		{
-			distances.Empty();
-		}
-		if (reflectionAngles.IsValidIndex(0))
-		{
-			reflectionAngles.Empty();
-		}
-		//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("%f, %f, %f"), points[0].X, points[0].Y, points[0].Z));
-		//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("%f, %f, %f"), reflectionAnglesSecondary[0].X, reflectionAnglesSecondary[0].Y, reflectionAnglesSecondary[0].Z));
-		RunNextWave(pointsSecondary, distancesSecondary, reflectionAnglesSecondary);
-	}
-	if (points.Num() > 0 && active == 2)
+	if ((pointsSecondary.Num() == 0 && active == 1) || (points.Num() == 0 && active == 2))
 	{
-		hitsFound = 0;
-		if (pointsSecondary.IsValidIndex(0))
+		EndOfWaves();
+	}
+	else
+	{
+		if (pointsSecondary.Num() > 0 && active == 1)
 		{
-			pointsSecondary.Empty();
+			hitsFound = 0;
+			if (points.IsValidIndex(0))
+			{
+				points.Empty();
+			}
+			if (distances.IsValidIndex(0))
+			{
+				distances.Empty();
+			}
+			if (reflectionAngles.IsValidIndex(0))
+			{
+				reflectionAngles.Empty();
+			}
+			//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("%f, %f, %f"), points[0].X, points[0].Y, points[0].Z));
+			//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("%f, %f, %f"), reflectionAnglesSecondary[0].X, reflectionAnglesSecondary[0].Y, reflectionAnglesSecondary[0].Z));
+			RunNextWave(pointsSecondary, distancesSecondary, reflectionAnglesSecondary);
 		}
-		if (distancesSecondary.IsValidIndex(0))
+		if (points.Num() > 0 && active == 2)
 		{
-			distancesSecondary.Empty();
+			hitsFound = 0;
+			if (pointsSecondary.IsValidIndex(0))
+			{
+				pointsSecondary.Empty();
+			}
+			if (distancesSecondary.IsValidIndex(0))
+			{
+				distancesSecondary.Empty();
+			}
+			if (reflectionAnglesSecondary.IsValidIndex(0))
+			{
+				reflectionAnglesSecondary.Empty();
+			}
+			RunNextWave(points, distances, reflectionAngles);
 		}
-		if (reflectionAnglesSecondary.IsValidIndex(0))
-		{
-			reflectionAnglesSecondary.Empty();
-		}
-		RunNextWave(points, distances, reflectionAngles);
 	}
 
+	
+	
+
+}
+
+void UPlotSpherePoints::EndOfWaves()
+{
+	listener->TakeInformation(endPoints, hitPoints, hitAngles, hitDistances);
+	endPoints.Empty();
+	hitPoints.Empty();
+	hitAngles.Empty();
+	hitDistances.Empty();
 }
 
 
