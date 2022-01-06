@@ -3,6 +3,7 @@
 #pragma once
 
 #include "ListenerActor.h"
+#include "Sound/SoundCue.h"
 #include "CoreMinimal.h"
 #include "Components/SceneComponent.h"
 #include "PlotSpherePoints.generated.h"
@@ -36,6 +37,12 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void PointProductionMaths(int NumOfPoints, float GoldenRatio);
 
+	UFUNCTION(BlueprintCallable)
+	void setCue(USoundCue* Cue);
+
+	UFUNCTION(BlueprintCallable)
+	void setListener(AListenerActor* Listener);
+	
 	UPROPERTY()
 	TArray<FVector> points;
 	UPROPERTY()
@@ -70,6 +77,8 @@ public:
 	float goldenRatio;
 	//End of Placement Variables
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	USoundCue* cue;
 
 	//Ray Cast Variables
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Information)
@@ -84,6 +93,7 @@ public:
 	int vectorLength;
 	FVector normalizedVector;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	AListenerActor* listener;
 	
 	bool rayHit;

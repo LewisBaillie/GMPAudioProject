@@ -32,11 +32,6 @@ void UPlotSpherePoints::PointProductionMaths(int NumOfPoints, float GoldenRatio)
 
 	points.Empty();
 
-	APlayerCameraManager* playerCamera = GetWorld()->GetFirstPlayerController()->PlayerCameraManager;
-	FActorSpawnParameters spawnInfo;
-	listener = GetWorld()->SpawnActor<AListenerActor>(AListenerActor::StaticClass(), playerCamera->GetCameraLocation(), playerCamera->GetCameraRotation(), spawnInfo);
-	listener->AttachToActor(playerCamera, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
-	
 	float phi = PI * (3.f - sqrt(5.f));
 	//static_cast<float>
 	for (int i= 0; i < NumOfPoints; i++)
@@ -120,7 +115,7 @@ void UPlotSpherePoints::RunFirstWave()
 			
 			hit.Reset(0, false);
 		}
-		else
+		else if(!rayHit)
 		{
 			endPoints.Emplace(endPos);
 		}
@@ -140,6 +135,12 @@ void UPlotSpherePoints::RunFirstWave()
 
 	
 }
+
+void UPlotSpherePoints::setListener(AListenerActor* Listener)
+{
+	listener = Listener;
+}
+
 
 void UPlotSpherePoints::RunWave(TArray<FVector> startPositions, TArray<float> distance, TArray<FVector> reflectionAngleArray)
 {
@@ -222,7 +223,7 @@ void UPlotSpherePoints::RunWave(TArray<FVector> startPositions, TArray<float> di
 			}
 			
 		}
-		else
+		else if(!rayHit)
 		{
 			endPoints.Emplace(startPositions[i] + (reflectionAngleArray[i] * distance[i]));
 		}
@@ -276,15 +277,17 @@ void UPlotSpherePoints::RunWave(TArray<FVector> startPositions, TArray<float> di
 			RunNextWave(points, distances, reflectionAngles);
 		}
 	}
-
-	
-	
-
 }
+
+void UPlotSpherePoints::setCue(USoundCue* Cue)
+{
+	cue = Cue;
+}
+
 
 void UPlotSpherePoints::EndOfWaves()
 {
-	listener->TakeInformation(endPoints, hitPoints, hitAngles, hitDistances);
+	listener->TakeInformation(endPoints, hitPoints, hitAngles, hitDistances, cue);
 	endPoints.Empty();
 	hitPoints.Empty();
 	hitAngles.Empty();
